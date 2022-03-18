@@ -24,7 +24,7 @@ import { createHash } from "crypto";
 import { AnyTuple, CallBase } from "@polkadot/types/types";
 import { EventEmitter } from "events";
 import PQueue from "p-queue";
-import pEvent from "p-event";
+import pEvent from 'p-event';
 import Heap from "heap-js";
 
 const ENDPOINT = process.env.ENDPOINT || "ws://localhost:9944";
@@ -220,13 +220,15 @@ async function saveBlock(blockNum: number, mode: SaveBlockMode) {
       }
     }
     let blockAt = 0;
-    const [signedBlock, sessionIndex, records, runtimeVersion] =
+    const [signedBlock, sessionIndexCodec, recordsCodec, runtimeVersion] =
       await Promise.all([
         apiRpc.rpc.chain.getBlock(blockHash),
         apiRpc.query.session.currentIndex.at(blockHash),
         apiRpc.query.system.events.at(blockHash),
         apiRpc.rpc.state.getRuntimeVersion(blockHash),
       ]);
+    const sessionIndex = sessionIndexCodec as any;
+    const records = recordsCodec as any;
     const paymentInfos = await Promise.all(
       signedBlock.block.extrinsics.map(async (ex) => {
         if (ex.isSigned) {
