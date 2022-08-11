@@ -220,14 +220,12 @@ async function saveBlock(blockNum: number, mode: SaveBlockMode) {
       }
     }
     let blockAt = 0;
-    const [signedBlock, sessionIndexCodec, recordsCodec, runtimeVersion] =
+    const [signedBlock, recordsCodec, runtimeVersion] =
       await Promise.all([
         apiRpc.rpc.chain.getBlock(blockHash),
-        apiRpc.query.session.currentIndex.at(blockHash),
         apiRpc.query.system.events.at(blockHash),
         apiRpc.rpc.state.getRuntimeVersion(blockHash),
       ]);
-    const sessionIndex = sessionIndexCodec as any;
     const records = recordsCodec as any;
     const paymentInfos = await Promise.all(
       signedBlock.block.extrinsics.map(async (ex) => {
@@ -374,7 +372,7 @@ async function saveBlock(blockNum: number, mode: SaveBlockMode) {
       extrinsicsCount,
       eventsCount: events.length,
       specVersion: blockSpecVersion,
-      validator: await getAuthor(signedBlock, sessionIndex.toNumber()),
+      validator: '',
       finalized,
     };
     await prisma.$transaction([
@@ -419,25 +417,6 @@ function getExtrinsicKind(
     default:
       return 0;
   }
-}
-
-async function getAuthor(signedBlock: SignedBlock, sessionIndex: number) {
-  let validators = sessionValidators.get(sessionIndex);
-  if (!validators) {
-    validators = await apiRpc.query.session.validators.at(
-      signedBlock.block.hash
-    );
-    if (!sessionValidators.has(sessionIndex)) {
-      sessionValidators.set(sessionIndex, validators);
-      Array.from(sessionValidators.keys()).forEach((idx) => {
-        if (sessionIndex - idx < 3) {
-          sessionValidators.delete(idx);
-        }
-      });
-    }
-  }
-  const validator = extractAuthor(signedBlock.block.header.digest, validators);
-  return validator ? validator.toString() : "";
 }
 
 interface ParseArgsCtx {
